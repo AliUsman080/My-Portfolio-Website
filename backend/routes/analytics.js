@@ -1,5 +1,9 @@
 const express = require('express');
-const { db } = require('../db/init');
+const Visitor = require('../models/Visitor');
+const SiteVisit = require('../models/SiteVisit');
+const ContactMessage = require('../models/ContactMessage');
+const Project = require('../models/Project');
+const User = require('../models/User');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -17,7 +21,7 @@ function parseDevice(ua = '') {
   return { device, browser };
 }
 
-router.post('/track', (req, res) => {
+router.post('/track', async (req, res) => {
   const { visitor_id, page_path, page_title, referrer, screen_size } = req.body;
 
   if (!visitor_id || !page_path) {
@@ -28,94 +32,138 @@ router.post('/track', (req, res) => {
   const { device, browser } = parseDevice(ua);
 
   try {
-    const existing = db.prepare('SELECT visitor_id FROM visitors WHERE visitor_id = ?').get(visitor_id);
+    let visitor = await Visitor.findOne({ visitor_id });
 
-    if (existing) {
-      db.prepare(`
-        UPDATE visitors SET last_seen = CURRENT_TIMESTAMP, visit_count = visit_count + 1,
-        pages_viewed = pages_viewed + 1, last_page = ?, device_type = ?, browser = ?, referrer = ?
-        WHERE visitor_id = ?
-      `).run(page_path, device, browser, referrer || null, visitor_id);
+    if (visitor) {
+      visitor.last_seen = Date.now();
+      visitor.visit_count += 1;
+      visitor.pages_viewed += 1;
+      visitor.last_page = page_path;
+      visitor.device_type = device;
+      visitor.browser = browser;
+      visitor.referrer = referrer || visitor.referrer;
+      await visitor.save();
     } else {
-      db.prepare(`
-        INSERT INTO visitors (visitor_id, last_page, device_type, browser, referrer)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(visitor_id, page_path, device, browser, referrer || null);
+      await Visitor.create({
+        visitor_id,
+        last_page: page_path,
+        device_type: device,
+        browser,
+        referrer: referrer || null
+      });
     }
 
-    db.prepare(`
-      INSERT INTO site_visits (visitor_id, page_path, page_title, referrer, user_agent, device_type, browser, screen_size)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(visitor_id, page_path, page_title || null, referrer || null, ua, device, browser, screen_size || null);
+    await SiteVisit.create({
+      visitor_id,
+      page_path,
+      page_title: page_title || null,
+      referrer: referrer || null,
+      user_agent: ua,
+      device_type: device,
+      browser,
+      screen_size: screen_size || null
+    });
 
     res.json({ success: true });
-  } catch {
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to track visit.' });
   }
 });
 
-router.get('/overview', authenticateToken, requireAdmin, (req, res) => {
+router.get('/overview', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [
+      totalVisits,
+      uniqueVisitors,
+      totalMessages,
+      newMessages,
+      totalProjects,
+      totalUsers,
+      todayVisits
+    ] = await Promise.all([
+      SiteVisit.countDocuments(),
+      Visitor.countDocuments(),
+      ContactMessage.countDocuments(),
+      ContactMessage.countDocuments({ status: 'new' }),
+      Project.countDocuments(),
+      User.countDocuments(),
+      SiteVisit.countDocuments({ visited_at: { $gte: today } })
+    ]);
+
     const stats = {
-      totalVisits: db.prepare('SELECT COUNT(*) as c FROM site_visits').get().c,
-      uniqueVisitors: db.prepare('SELECT COUNT(*) as c FROM visitors').get().c,
-      totalMessages: db.prepare('SELECT COUNT(*) as c FROM contact_messages').get().c,
-      newMessages: db.prepare("SELECT COUNT(*) as c FROM contact_messages WHERE status = 'new'").get().c,
-      totalProjects: db.prepare('SELECT COUNT(*) as c FROM projects').get().c,
-      totalUsers: db.prepare('SELECT COUNT(*) as c FROM users').get().c,
-      todayVisits: db.prepare("SELECT COUNT(*) as c FROM site_visits WHERE date(visited_at) = date('now')").get().c,
+      totalVisits,
+      uniqueVisitors,
+      totalMessages,
+      newMessages,
+      totalProjects,
+      totalUsers,
+      todayVisits
     };
 
-    const topPages = db.prepare(`
-      SELECT page_path, COUNT(*) as views FROM site_visits
-      GROUP BY page_path ORDER BY views DESC LIMIT 5
-    `).all();
+    const topPages = await SiteVisit.aggregate([
+      { $group: { _id: '$page_path', views: { $sum: 1 } } },
+      { $sort: { views: -1 } },
+      { $limit: 5 },
+      { $project: { page_path: '$_id', views: 1, _id: 0 } }
+    ]);
 
-    const recentVisits = db.prepare(`
-      SELECT sv.*, v.visit_count FROM site_visits sv
-      LEFT JOIN visitors v ON sv.visitor_id = v.visitor_id
-      ORDER BY sv.visited_at DESC LIMIT 10
-    `).all();
+    const recentVisits = await SiteVisit.find().sort({ visited_at: -1 }).limit(10).lean();
+    
+    // Add visit_count to recent visits
+    const enrichedRecentVisits = await Promise.all(recentVisits.map(async (visit) => {
+      const v = await Visitor.findOne({ visitor_id: visit.visitor_id });
+      return { ...visit, visit_count: v ? v.visit_count : 0 };
+    }));
 
-    res.json({ success: true, stats, topPages, recentVisits });
-  } catch {
+    res.json({ success: true, stats, topPages, recentVisits: enrichedRecentVisits });
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to load overview.' });
   }
 });
 
-router.get('/visitors', authenticateToken, requireAdmin, (req, res) => {
+router.get('/visitors', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const visitors = db.prepare(`
-      SELECT v.*,
-        (SELECT COUNT(*) FROM site_visits WHERE visitor_id = v.visitor_id) as total_pageviews,
-        (SELECT GROUP_CONCAT(DISTINCT page_path) FROM site_visits WHERE visitor_id = v.visitor_id) as pages_visited
-      FROM visitors v ORDER BY v.last_seen DESC
-    `).all();
-    res.json({ success: true, visitors });
-  } catch {
+    const visitors = await Visitor.find().sort({ last_seen: -1 }).lean();
+    
+    const enrichedVisitors = await Promise.all(visitors.map(async (v) => {
+      const views = await SiteVisit.countDocuments({ visitor_id: v.visitor_id });
+      const pages = await SiteVisit.distinct('page_path', { visitor_id: v.visitor_id });
+      return {
+        ...v,
+        total_pageviews: views,
+        pages_visited: pages.join(', ')
+      };
+    }));
+
+    res.json({ success: true, visitors: enrichedVisitors });
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to load visitors.' });
   }
 });
 
-router.get('/visits', authenticateToken, requireAdmin, (req, res) => {
+router.get('/visits', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const visits = db.prepare(`
-      SELECT sv.*, v.visit_count as visitor_total_visits
-      FROM site_visits sv
-      LEFT JOIN visitors v ON sv.visitor_id = v.visitor_id
-      ORDER BY sv.visited_at DESC LIMIT 200
-    `).all();
-    res.json({ success: true, visits });
-  } catch {
+    const visits = await SiteVisit.find().sort({ visited_at: -1 }).limit(200).lean();
+    
+    const enrichedVisits = await Promise.all(visits.map(async (visit) => {
+      const v = await Visitor.findOne({ visitor_id: visit.visitor_id });
+      return { ...visit, visitor_total_visits: v ? v.visit_count : 0 };
+    }));
+
+    res.json({ success: true, visits: enrichedVisits });
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to load visits.' });
   }
 });
 
-router.get('/users', authenticateToken, requireAdmin, (req, res) => {
+router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const users = db.prepare('SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC').all();
+    const users = await User.find().select('-password').sort({ created_at: -1 });
     res.json({ success: true, users });
-  } catch {
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to load users.' });
   }
 });

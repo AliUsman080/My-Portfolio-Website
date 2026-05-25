@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { db } = require('../db/init');
+const ContactMessage = require('../models/ContactMessage');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -13,7 +13,7 @@ router.post(
     body('subject').trim().isLength({ min: 3 }).withMessage('Subject must be at least 3 characters'),
     body('message').trim().isLength({ min: 10 }).withMessage('Message must be at least 10 characters'),
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
@@ -22,39 +22,49 @@ router.post(
     const { name, email, subject, message, phone, attachment, attachmentName } = req.body;
 
     try {
-      const result = db.prepare(
-        'INSERT INTO contact_messages (name, email, phone, subject, message, attachment_url, attachment_name) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).run(name, email, phone || null, subject, message, attachment || null, attachmentName || null);
+      const contactMessage = await ContactMessage.create({
+        name,
+        email,
+        phone: phone || null,
+        subject,
+        message,
+        attachment_url: attachment || null,
+        attachment_name: attachmentName || null
+      });
 
       res.status(201).json({
         success: true,
         message: 'Thank you! Your message has been sent successfully.',
-        id: result.lastInsertRowid,
+        id: contactMessage._id,
       });
-    } catch {
+    } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to send message. Please try again.' });
     }
   }
 );
 
-router.get('/', authenticateToken, requireAdmin, (req, res) => {
+router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const messages = db.prepare('SELECT * FROM contact_messages ORDER BY created_at DESC').all();
+    const messages = await ContactMessage.find().sort({ created_at: -1 });
     res.json({ success: true, messages });
-  } catch {
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch messages.' });
   }
 });
 
-router.get('/:id', authenticateToken, requireAdmin, (req, res) => {
-  const message = db.prepare('SELECT * FROM contact_messages WHERE id = ?').get(req.params.id);
-  if (!message) {
-    return res.status(404).json({ success: false, message: 'Message not found.' });
+router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const message = await ContactMessage.findById(req.params.id);
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message not found.' });
+    }
+    res.json({ success: true, message });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error fetching message.' });
   }
-  res.json({ success: true, message });
 });
 
-router.patch('/:id/status', authenticateToken, requireAdmin, (req, res) => {
+router.patch('/:id/status', authenticateToken, requireAdmin, async (req, res) => {
   const { status } = req.body;
   const validStatuses = ['new', 'read', 'replied', 'archived'];
 
@@ -62,30 +72,31 @@ router.patch('/:id/status', authenticateToken, requireAdmin, (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid status value.' });
   }
 
-  const existing = db.prepare('SELECT id FROM contact_messages WHERE id = ?').get(req.params.id);
-  if (!existing) {
-    return res.status(404).json({ success: false, message: 'Message not found.' });
-  }
-
   try {
-    db.prepare('UPDATE contact_messages SET status = ? WHERE id = ?').run(status, req.params.id);
-    const message = db.prepare('SELECT * FROM contact_messages WHERE id = ?').get(req.params.id);
+    const message = await ContactMessage.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message not found.' });
+    }
+
     res.json({ success: true, message: 'Status updated.', data: message });
-  } catch {
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to update status.' });
   }
 });
 
-router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
-  const existing = db.prepare('SELECT id FROM contact_messages WHERE id = ?').get(req.params.id);
-  if (!existing) {
-    return res.status(404).json({ success: false, message: 'Message not found.' });
-  }
-
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    db.prepare('DELETE FROM contact_messages WHERE id = ?').run(req.params.id);
+    const message = await ContactMessage.findByIdAndDelete(req.params.id);
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message not found.' });
+    }
     res.json({ success: true, message: 'Message deleted.' });
-  } catch {
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to delete message.' });
   }
 });
