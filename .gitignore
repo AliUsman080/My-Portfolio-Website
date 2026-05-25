@@ -5,3 +5,5 @@ database.db-shm
 .env
 *.log
 .DS_Store
+.vercel
+.env*
