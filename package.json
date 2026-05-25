@@ -1,0 +1,13 @@
+{
+  "name": "ali-usman-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ali Usman — Professional Portfolio (Frontend + Backend)",
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install",
+    "backend": "cd backend && npm start",
+    "frontend": "cd frontend && npm start",
+    "dev": "npm run backend & npm run frontend",
+    "start": "cd backend && set SERVE_FRONTEND=true&& npm start"
+  }
+}

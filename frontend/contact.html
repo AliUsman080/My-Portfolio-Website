@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Contact Ali Usman for web development projects and business inquiries.">
+  <title>Contact | Ali Usman</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="index.html" class="logo"><span class="logo-icon">AU</span> Ali Usman</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="services.html">Services</a>
+        <a href="projects.html">Projects</a>
+        <a href="contact.html">Contact</a>
+        <div class="nav-cta"><a href="login.html" id="auth-nav-link" class="btn btn-primary btn-sm">Login</a></div>
+      </div>
+      <button class="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="section-label">Contact</span>
+      <h1>Let's <span class="gradient-text display-font">Connect</span></h1>
+      <p class="section-desc">Have a project idea or business inquiry? Send me a message.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="container contact-grid">
+      <div class="reveal">
+        <h2 style="margin-bottom:32px">Get In Touch</h2>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">✉️</div>
+          <div><h4>Email</h4><p>wwwalidogar140@gmail.com</p></div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">⌘</div>
+          <div><h4>GitHub</h4><p><a href="https://github.com/AliUsman080" target="_blank" rel="noopener" style="color:var(--accent-light)">github.com/AliUsman080</a></p></div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">🌍</div>
+          <div><h4>Location</h4><p>Kahna nau Lahore</p></div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">⏰</div>
+          <div><h4>Response Time</h4><p>Within 24 hours</p></div>
+        </div>
+      </div>
+
+      <div class="card reveal">
+        <h3 style="margin-bottom:24px">Send a Message</h3>
+        <form id="contact-form" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Full Name *</label>
+              <input type="text" id="name" name="name" class="form-control" placeholder="Ali Usman" required>
+              <div class="error-msg"></div>
+            </div>
+            <div class="form-group">
+              <label for="email">Email Address *</label>
+              <input type="email" id="email" name="email" class="form-control" placeholder="ali@example.com" required>
+              <div class="error-msg"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="subject">Subject *</label>
+            <input type="text" id="subject" name="subject" class="form-control" placeholder="Project Inquiry / Job Opportunity" required>
+            <div class="error-msg"></div>
+          </div>
+          <div class="form-group">
+            <label for="message">Message *</label>
+            <textarea id="message" name="message" class="form-control" placeholder="Tell me about your project or inquiry in detail..." required></textarea>
+            <div class="error-msg"></div>
+          </div>
+          <div class="form-group">
+            <label for="attachment">Attachment (Optional)</label>
+            <div class="file-input-wrapper">
+              <input type="file" id="attachment" name="attachment" class="form-control file-input">
+              <div class="file-input-info">PDF, DOCX or Images (Max 5MB)</div>
+            </div>
+            <div class="error-msg"></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top: 16px;">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom" style="border:none;padding:0"><span>&copy; 2026 Ali Usman. All rights reserved.</span></div>
+    </div>
+  </footer>
+  <script src="js/main.js"></script>
+  <script src="js/contact.js"></script>
+</body>
+</html>

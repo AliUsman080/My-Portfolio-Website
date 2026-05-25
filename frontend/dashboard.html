@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Ali Usman</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="index.html" class="logo"><span class="logo-icon">AU</span> Ali Usman</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="projects.html">Projects</a>
+        <a href="contact.html">Contact</a>
+        <button id="logout-btn" class="btn btn-ghost btn-sm">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-layout">
+    <div class="container">
+      <div class="dashboard-header">
+        <div>
+          <span class="section-label">Admin Panel</span>
+          <h1>Dashboard</h1>
+          <p style="color:var(--text-secondary)" id="user-greeting">Welcome</p>
+        </div>
+        <button id="add-project-btn" class="btn btn-primary">+ Add Project</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card"><div class="label">Total Projects</div><div class="value" id="stat-projects">0</div></div>
+        <div class="stat-card"><div class="label">Messages</div><div class="value" id="stat-messages">0</div></div>
+        <div class="stat-card"><div class="label">New Messages</div><div class="value" id="stat-new">0</div></div>
+      </div>
+
+      <div class="dashboard-tabs">
+        <button class="tab-btn active" data-tab="projects-panel">Projects (CRUD)</button>
+        <button class="tab-btn" data-tab="messages-panel">Contact Messages</button>
+      </div>
+
+      <div id="projects-panel" class="tab-panel active">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Title</th><th>Tech Stack</th><th>Featured</th><th>Created</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="projects-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="messages-panel" class="tab-panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Subject</th><th>Status</th><th>Date</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="messages-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="project-modal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="modal-title">Add Project</h2>
+      <form id="project-form">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="project-title" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="project-desc" class="form-control" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tech Stack (comma separated)</label>
+          <input type="text" id="project-tech" class="form-control" placeholder="TypeScript, React, Node.js" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>GitHub URL</label>
+            <input type="url" id="project-github" class="form-control" placeholder="https://github.com/...">
+          </div>
+          <div class="form-group">
+            <label>Live URL</label>
+            <input type="url" id="project-live" class="form-control" placeholder="https://...">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Emoji Icon</label>
+            <input type="text" id="project-emoji" class="form-control" value="🚀" maxlength="4">
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-top:28px">
+            <input type="checkbox" id="project-featured">
+            <label for="project-featured" style="margin:0">Featured project</label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeProjectModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
